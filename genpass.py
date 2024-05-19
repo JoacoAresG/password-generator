@@ -1,30 +1,36 @@
 import string
 import random
 import tkinter as tk
+from tkinter import ttk
 from tkinter import messagebox
+
+def validar_longitud(longi, tipos_seleccionados):
+    if longi < tipos_seleccionados:
+        raise ValueError(f"La longitud debe ser al menos {tipos_seleccionados} para incluir todos los tipos de caracteres seleccionados.")
+    if longi > 10000:
+        raise ValueError(f"La longitud debe ser de menos de 10000 caracteres para evitar sobrecargar de Hardware.")
+
+def construir_conjunto_caracteres():
+    caracteres = ""
+    if var_lower.get():
+        caracteres += string.ascii_lowercase
+    if var_upper.get():
+        caracteres += string.ascii_uppercase
+    if var_digits.get():
+        caracteres += string.digits
+    if var_special.get():
+        caracteres += string.punctuation
+    if not caracteres:
+        raise ValueError("Debe seleccionar al menos un tipo de carácter.")
+    return caracteres
 
 def generar_contraseña():
     try:
         longi = int(entry_longitud.get())
-        if longi < 1:
-            raise ValueError("La longitud debe ser al menos 1.")
+        tipos_seleccionados = sum([var_lower.get(), var_upper.get(), var_digits.get(), var_special.get()])
+        validar_longitud(longi, tipos_seleccionados)
         
-        selected_char_types = sum([var_lower.get(), var_upper.get(), var_digits.get(), var_special.get()])
-        if longi < selected_char_types:
-            raise ValueError(f"La longitud debe ser al menos {selected_char_types} para incluir todos los tipos de caracteres seleccionados.")
-        
-        caracteres = ""
-        if var_lower.get():
-            caracteres += string.ascii_lowercase
-        if var_upper.get():
-            caracteres += string.ascii_uppercase
-        if var_digits.get():
-            caracteres += string.digits
-        if var_special.get():
-            caracteres += string.punctuation
-        
-        if not caracteres:
-            raise ValueError("Debe seleccionar al menos un tipo de carácter.")
+        caracteres = construir_conjunto_caracteres()
         
         # Generar la contraseña
         contraseña = []
@@ -39,18 +45,20 @@ def generar_contraseña():
         
         # Completar la contraseña con caracteres aleatorios
         contraseña += [random.choice(caracteres) for _ in range(longi - len(contraseña))]
-        
-        # Mezclar la contraseña para que los primeros caracteres no sigan siempre el mismo patrón
         random.shuffle(contraseña)
-        
-        # Convertir la lista en una cadena
         contraseña = "".join(contraseña)
         
         # Mostrar la contraseña en el Entry
+        entry_contraseña.config(state=tk.NORMAL)
         entry_contraseña.delete(0, tk.END)
         entry_contraseña.insert(0, contraseña)
+        entry_contraseña.config(state='readonly')
+
+        # Copiar automáticamente si la opción está habilitada
+        if var_autocopy.get():
+            copiar_contraseña()
         
-        messagebox.showinfo("Contraseña Generada", f"Tu nueva contraseña es: {contraseña}")
+        messagebox.showinfo("Contraseña Generada", "Contraseña generada y copiada al portapapeles." if var_autocopy.get() else "Contraseña generada.")
     except ValueError as ve:
         messagebox.showerror("Error", f"Entrada inválida: {ve}")
 
@@ -72,28 +80,40 @@ var_lower = tk.BooleanVar(value=True)
 var_upper = tk.BooleanVar(value=True)
 var_digits = tk.BooleanVar(value=True)
 var_special = tk.BooleanVar(value=True)
+var_autocopy = tk.BooleanVar(value=False)  # Predeterminadamente desactivado
 
 # Crear y colocar los widgets
-tk.Label(root, text="Ingrese la longitud de la contraseña:").pack(pady=10)
-entry_longitud = tk.Entry(root)
-entry_longitud.pack(pady=5)
+main_frame = ttk.Frame(root, padding="10")
+main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-tk.Checkbutton(root, text="Incluir letras minúsculas", variable=var_lower).pack(anchor=tk.W, padx=20)
-tk.Checkbutton(root, text="Incluir letras mayúsculas", variable=var_upper).pack(anchor=tk.W, padx=20)
-tk.Checkbutton(root, text="Incluir números", variable=var_digits).pack(anchor=tk.W, padx=20)
-tk.Checkbutton(root, text="Incluir caracteres especiales", variable=var_special).pack(anchor=tk.W, padx=20)
+ttk.Label(main_frame, text="Ingrese la longitud de la contraseña:").grid(row=0, column=0, columnspan=2, pady=10)
+entry_longitud = ttk.Entry(main_frame)
+entry_longitud.grid(row=1, column=0, columnspan=2, pady=5, sticky=(tk.W, tk.E))
 
-tk.Button(root, text="Generar Contraseña", command=generar_contraseña).pack(pady=20)
+options_frame = ttk.LabelFrame(main_frame, text="Opciones de caracteres", padding="10")
+options_frame.grid(row=2, column=0, columnspan=2, pady=10, sticky=(tk.W, tk.E))
 
-# Entry para mostrar la contraseña generada
-entry_contraseña = tk.Entry(root, width=50)
-entry_contraseña.pack(pady=10)
+ttk.Checkbutton(options_frame, text="Incluir letras minúsculas", variable=var_lower).grid(row=0, column=0, sticky=tk.W)
+ttk.Checkbutton(options_frame, text="Incluir letras mayúsculas", variable=var_upper).grid(row=1, column=0, sticky=tk.W)
+ttk.Checkbutton(options_frame, text="Incluir números", variable=var_digits).grid(row=2, column=0, sticky=tk.W)
+ttk.Checkbutton(options_frame, text="Incluir caracteres especiales", variable=var_special).grid(row=3, column=0, sticky=tk.W)
 
-# Botón para copiar la contraseña
-tk.Button(root, text="Copiar Contraseña", command=copiar_contraseña).pack(pady=10)
+# Opción de copiar automáticamente, separada del grupo de opciones de caracteres
+ttk.Checkbutton(main_frame, text="Copiar automáticamente", variable=var_autocopy).grid(row=3, column=0, columnspan=2, pady=10, sticky=tk.W)
+
+ttk.Button(main_frame, text="Generar Contraseña", command=generar_contraseña).grid(row=4, column=0, columnspan=2, pady=20)
+
+ttk.Label(main_frame, text="Contraseña Generada:").grid(row=5, column=0, pady=10, sticky=tk.W)
+entry_contraseña = ttk.Entry(main_frame, width=50, state='readonly')
+entry_contraseña.grid(row=6, column=0, pady=10, sticky=(tk.W, tk.E))
+
+ttk.Button(main_frame, text="Copiar Contraseña", command=copiar_contraseña).grid(row=6, column=1, pady=10, padx=5, sticky=tk.W)
+
+# Ajustar las columnas para que se expandan
+root.columnconfigure(0, weight=1)
+root.rowconfigure(0, weight=1)
+main_frame.columnconfigure(0, weight=1)
+main_frame.columnconfigure(1, weight=1)
 
 # Iniciar el bucle principal de la interfaz
 root.mainloop()
-
-
-
